@@ -1,0 +1,13 @@
+{
+  "name": "estoque-mais",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Aplicativo de gerenciamento de estoque.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node smoke-test.mjs && node tests/api.test.mjs"
+  },
+  "author": "Seu Nome",
+  "license": "ISC"
+}

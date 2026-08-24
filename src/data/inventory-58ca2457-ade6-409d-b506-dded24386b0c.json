@@ -1,0 +1,60 @@
+{
+  "products": [
+    {
+      "id": 1,
+      "name": "Kit organizador modular",
+      "sku": "ALV-1042",
+      "category": "Organização",
+      "quantity": 86,
+      "minimum": 20,
+      "price": 89.9
+    },
+    {
+      "id": 2,
+      "name": "Cafeteira italiana 6 xícaras",
+      "sku": "ALV-0987",
+      "category": "Cozinha",
+      "quantity": 24,
+      "minimum": 15,
+      "price": 129.9
+    },
+    {
+      "id": 3,
+      "name": "Jogo de cama algodão",
+      "sku": "ALV-1178",
+      "category": "Têxtil",
+      "quantity": 7,
+      "minimum": 12,
+      "price": 159.9
+    },
+    {
+      "id": 4,
+      "name": "Vaso cerâmica terracota",
+      "sku": "ALV-0821",
+      "category": "Casa & decoração",
+      "quantity": 42,
+      "minimum": 10,
+      "price": 74.5
+    },
+    {
+      "id": 5,
+      "name": "Tábua de corte bambu",
+      "sku": "ALV-1254",
+      "category": "Cozinha",
+      "quantity": 0,
+      "minimum": 8,
+      "price": 64.9
+    },
+    {
+      "id": 6,
+      "name": "Cesto de fibra natural",
+      "sku": "ALV-1106",
+      "category": "Organização",
+      "quantity": 18,
+      "minimum": 10,
+      "price": 109.9
+    }
+  ],
+  "movements": [],
+  "productAudits": []
+}

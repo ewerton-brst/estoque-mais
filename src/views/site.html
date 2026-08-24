@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estoque Mais | Gestão de estoque simples e poderosa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="progress-bar" id="progress-bar"></div>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#inicio"><b>E</b><span>estoque<span>+</span></span></a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Abrir menu"><i data-lucide="menu"></i></button>
+    <div class="nav-links" id="nav-links">
+      <a href="#inicio" class="active">Início</a>
+      <a href="#funcionalidades">Funcionalidades</a>
+      <a href="#ajuda">Ajuda</a>
+      <a class="cta" href="/" target="_blank" rel="noopener">Abrir o aplicativo <i data-lucide="arrow-up-right"></i></a>
+    </div>
+  </div>
+</nav>
+
+<header id="inicio" class="hero">
+  <div class="blob blob-a"></div><div class="blob blob-b"></div><div class="blob blob-c"></div>
+  <div class="hero-inner">
+    <div class="hero-copy">
+      <span class="badge"><i data-lucide="sparkles"></i> Gestão de estoque multiempresa</span>
+      <h1>O controle do seu <em>estoque</em>, simples do jeito que deve ser.</h1>
+      <p>Cadastre produtos, registre entradas e saídas, receba alertas de reposição e acompanhe o valor do seu estoque em tempo real — sozinho ou com toda a equipe, em uma ou várias empresas.</p>
+      <div class="hero-actions">
+        <a class="btn primary" href="/" target="_blank" rel="noopener"><i data-lucide="rocket"></i> Abrir o aplicativo</a>
+        <a class="btn ghost" href="#funcionalidades"><i data-lucide="layout-grid"></i> Ver funcionalidades</a>
+      </div>
+      <ul class="hero-chips">
+        <li><i data-lucide="building-2"></i> Multiempresa</li>
+        <li><i data-lucide="shield-check"></i> Acesso por níveis</li>
+        <li><i data-lucide="file-spreadsheet"></i> Exporta Excel e CSV</li>
+        <li><i data-lucide="moon-star"></i> Tema claro e escuro</li>
+      </ul>
+    </div>
+    <div class="mock" aria-hidden="true">
+      <div class="mock-window">
+        <div class="mock-titlebar"><span></span><span></span><span></span><em>estoque+ · painel</em></div>
+        <div class="mock-body">
+          <div class="mock-side">
+            <i class="on" data-lucide="layout-dashboard"></i><i data-lucide="package"></i><i data-lucide="arrow-left-right"></i><i data-lucide="triangle-alert"></i><i data-lucide="users"></i>
+          </div>
+          <div class="mock-main">
+            <div class="mock-metrics">
+              <div class="mock-metric"><small>Produtos</small><strong data-count="128">0</strong></div>
+              <div class="mock-metric"><small>Em estoque</small><strong data-count="1240">0</strong></div>
+              <div class="mock-metric warn"><small>Alertas</small><strong data-count="3">0</strong></div>
+            </div>
+            <div class="mock-chart">
+              <div class="bar" style="--h:46%"></div><div class="bar" style="--h:72%"></div><div class="bar hi" style="--h:95%"></div><div class="bar" style="--h:58%"></div><div class="bar" style="--h:80%"></div><div class="bar" style="--h:38%"></div>
+            </div>
+<div class="mock-alert"><i data-lucide="triangle-alert"></i> Cafeteira italiana está abaixo do mínimo <b>Repor</b></div>
+            <div class="mock-row shimmer"></div>
+            <div class="mock-row shimmer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="float-chip chip-a"><i data-lucide="package-plus"></i> Produto cadastrado</div>
+      <div class="float-chip chip-b"><i data-lucide="arrow-down-to-line"></i> Entrada de 24 un.</div>
+    </div>
+  </div>
+</header>
+
+<main>
+<section id="funcionalidades" class="section">
+  <div class="section-head reveal">
+    <small>FUNCIONALIDADES</small>
+    <h2>Tudo o que você precisa para não perder o controle</h2>
+    <p>Cada recurso foi pensado para o dia a dia de quem cuida de estoque.</p>
+  </div>
+  <div class="cards">
+    <article class="card reveal"><i class="ico blue" data-lucide="layout-dashboard"></i><h3>Dashboard em tempo real</h3><p>Métricas de produtos, unidades, valor investido e alertas sempre atualizadas, com sincronização automática entre pessoas da equipe.</p></article>
+    <article class="card reveal"><i class="ico violet" data-lucide="package"></i><h3>Catálogo de produtos</h3><p>Cadastre itens com SKU, categoria, preço unitário e estoque mínimo. Busca rápida e filtros por categoria e situação.</p></article>
+    <article class="card reveal"><i class="ico green" data-lucide="arrow-left-right"></i><h3>Entradas e saídas</h3><p>Registre movimentações com histórico completo de quem fez, quando e quantas unidades — sem permitir saída maior que o saldo.</p></article>
+    <article class="card reveal"><i class="ico amber" data-lucide="bell-ring"></i><h3>Alertas de reposição</h3><p>Itens abaixo do mínimo ou zerados são destacados automaticamente para você repor antes de faltar.</p></article>
+    <article class="card reveal"><i class="ico blue" data-lucide="file-spreadsheet"></i><h3>Relatórios exportáveis</h3><p>Baixe o inventário em Excel (.xlsx) ou CSV com um clique, respeitando permissões de exportação.</p></article>
+    <article class="card reveal"><i class="ico violet" data-lucide="building-2"></i><h3>Multiempresa</h3><p>Crie empresas com estoques totalmente independentes. Cada uma tem seu gerente, seus usuários e seu próprio controle.</p></article>
+    <article class="card reveal"><i class="ico green" data-lucide="users"></i><h3>Equipe com níveis de acesso</h3><p>Administrador, gerente, operador e consulta: cada papel enxerga e faz apenas o que deve. Auditoria registra quem alterou o quê.</p></article>
+    <article class="card reveal"><i class="ico amber" data-lucide="shield-check"></i><h3>Segurança de verdade</h3><p>Senhas criptografadas, sessões protegidas, limite de tentativas de login e backup opcional antes de excluir empresas.</p></article>
+  </div>
+  <div class="stats reveal">
+    <div><strong data-count="100" data-suffix="%">0</strong><span>Web, sem instalação</span></div>
+    <div><strong data-count="4">0</strong><span>Níveis de acesso</span></div>
+    <div><strong data-count="2">0</strong><span>Formatos de relatório</span></div>
+    <div><strong>∞</strong><span>Empresas e estoques</span></div>
+  </div>
+</section>
+
+<section id="ajuda" class="section help">
+  <div class="section-head reveal">
+    <small>AJUDA</small>
+    <h2>Como usar o Estoque Mais</h2>
+    <p>Guia rápido e direto das telas e fluxos do dia a dia. Clique em um tópico para abrir.</p>
+  </div>
+  <div class="accordion reveal">
+
+    <details open>
+      <summary><i data-lucide="log-in"></i> Como acessar o sistema</summary>
+      <div class="acc-body">
+        <p>Abra o endereço do Estoque Mais, escolha a sua <strong>empresa</strong> no seletor, informe <strong>usuário</strong> e <strong>senha</strong> e clique em <em>Entrar</em>.</p>
+        <p>No primeiro acesso (ou quando um administrador redefine sua senha), uma janela pedirá a criação de uma nova senha: digite-a <strong>duas vezes</strong> — ela precisa ter pelo menos <strong>6 caracteres</strong> e ser igual nos dois campos.</p>
+        <p>O administrador inicial criado automaticamente usa <strong>admin / admin</strong>. Troque essa senha logo no primeiro login.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary><i data-lucide="moon-star"></i> Tema claro, escuro e automático</summary>
+      <div class="acc-body">
+        <p>O botão de lua/sol no topo alterna entre três modos: <strong>claro</strong>, <strong>escuro</strong> e <strong>automático</strong> (acompanha o tema do seu sistema). A preferência fica salva no seu navegador.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary><i data-lucide="user-cog"></i> Seu perfil e o menu da conta</summary>
+      <div class="acc-body">
+        <p>Clique no avatar no canto superior direito para abrir o menu da conta:</p>
+        <ul>
+          <li><strong>Configurações do usuário</strong>: altere seu nome e sua foto de perfil (a imagem é redimensionada automaticamente antes de salvar).</li>
+          <li><strong>Sair</strong>: encerra a sua sessão.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary><i data-lucide="layout-dashboard"></i> Dashboard</summary>
+      <div class="acc-body">
+        <p>A tela inicial resume a operação em quatro cartões: <strong>produtos cadastrados</strong>, <strong>itens em estoque</strong>, <strong>valor do estoque</strong> e <strong>itens em alerta</strong>.</p>
+        <p>A lista de produtos aceita busca por nome ou SKU e filtros por categoria e situação:</p>
+        <ul>
+          <li>🟢 <strong>Saudável</strong>: quantidade acima do mínimo.</li>
+          <li>🟡 <strong>Estoque baixo</strong>: ainda há unidades, mas no limite ou abaixo do mínimo.</li>
+          <li>🔴 <strong>Sem estoque</strong>: quantidade zerada.</li>
+        </ul>
+        <p>O painel <strong>Atividade recente</strong> mostra as últimas movimentações e quem as registrou.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary><i data-lucide="package"></i> Produtos: cadastrar, editar e excluir</summary>
+      <div class="acc-body">
+        <p>Use <strong>Novo produto</strong> (ou o atalho <em>Cadastrar produto</em>) e preencha nome, SKU (sugerido automaticamente), categoria, quantidade atual, estoque mínimo e preço unitário.</p>
+        <p>Para editar, clique no lápis ✏️ na linha do produto; para excluir, na lixeira 🗑️ (com confirmação). Toda alteração fica registrada na auditoria.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary><i data-lucide="arrow-left-right"></i> Movimentações: entradas e saídas</summary>
+      <div class="acc-body">
+        <p>Em <strong>Registrar movimentação</strong>, escolha o produto, o tipo (<strong>↓ Entrada</strong> ou <strong>↑ Saída</strong>), a quantidade e uma observação opcional.</p>
+        <ul>
+          <li>A saída <strong>nunca supera</strong> o saldo disponível — o sistema bloqueia e avisa.</li>
+          <li>Cada registro guarda data, hora e o autor da movimentação.</li>
+          <li>As mais recentes aparecem no painel de atividade do dashboard.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary><i data-lucide="bell-ring"></i> Alertas de reposição</summary>
+      <div class="acc-body">
+        <p>A página <strong>Alertas</strong> lista os produtos que precisam de reposição, priorizando os zerados, e indica quantas unidades faltam para atingir o mínimo. O sino 🔔 no topo mostra quantos alertas estão pendentes.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary><i data-lucide="file-spreadsheet"></i> Relatórios e exportação</summary>
+      <div class="acc-body">
+        <p>O gráfico <strong>Distribuição por categoria</strong> mostra o valor investido por grupo de produtos.</p>
+        <p>Em <strong>Exportar relatório</strong>, escolha <strong>Excel (.xlsx)</strong> ou <strong>CSV</strong>. O arquivo inclui Produto, SKU, Categoria, Quantidade, Mínimo e Preço unitário. A exportação depende da permissão <em>"Pode exportar relatórios"</em>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary><i data-lucide="building-2"></i> Empresas: criar e remover</summary>
+      <div class="acc-body">
+        <p><strong>Criar</strong> (administrador): em Configurações → Empresas → Adicionar empresa, informe o nome (obrigatório) e, se quiser, CNPJ, telefone, e-mail e endereço. Ao concluir, uma janela mostra o <strong>usuário e a senha temporária do gerente</strong> dessa empresa — guarde esses dados.</p>
+        <p><strong>Remover</strong>: o botão vermelho <em>Remover</em> abre uma janela onde você pode marcar <strong>baixar uma cópia do estoque</strong> antes de excluir e precisa digitar a <strong>senha de administrador</strong>. A exclusão apaga todos os dados da empresa e remove os usuários que só tinham acesso a ela. A matriz BRSTEC não pode ser removida.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary><i data-lucide="users"></i> Usuários e níveis de acesso</summary>
+      <div class="acc-body">
+        <p>A página <strong>Usuários</strong> é usada pelo administrador master (vê todos os usuários e a empresa de cada um) e pelos gerentes (veem apenas os usuários da própria empresa).</p>
+        <ul>
+          <li><strong>Administrador</strong>: acesso total, inclusive criar empresas e usuários.</li>
+          <li><strong>Gerente</strong>: cuida do estoque e cadastra os usuários da sua empresa.</li>
+          <li><strong>Operador</strong>: registra produtos e movimentações.</li>
+          <li><strong>Consulta</strong>: somente visualiza.</li>
+        </ul>
+        <p>Contas podem ser <strong>ativadas/desativadas</strong>; desativadas não conseguem entrar. Ninguém pode desativar a própria conta.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary><i data-lucide="settings-2"></i> Configurações</summary>
+      <div class="acc-body">
+        <p>A página <strong>Configurações</strong> reúne os dados básicos da operação e o gerenciador de empresas. As preferências de tema ficam salvas no navegador de cada pessoa.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary><i data-lucide="circle-help"></i> Perguntas frequentes</summary>
+      <div class="acc-body">
+        <p><strong>Esqueci minha senha.</strong> Peça a um administrador que redefina; no próximo login você cria uma nova.</p>
+        <p><strong>As mudanças de outras pessoas não aparecem.</strong> Aguarde alguns segundos: o painel sincroniza automaticamente a cada 5 segundos.</p>
+        <p><strong>Posso usar em outro computador?</strong> Sim — na mesma rede, acesse o endereço exibido no console do servidor (ex.: http://192.168.0.10:3000).</p>
+        <p><strong>"Muitas tentativas de login".</strong> Após 5 senhas erradas seguidas, o acesso fica bloqueado por 10 minutos por segurança.</p>
+      </div>
+    </details>
+
+  </div>
+  <div class="help-cta reveal">
+    <a class="btn primary big" href="/" target="_blank" rel="noopener"><i data-lucide="rocket"></i> Pronto para começar? Abrir o Estoque Mais</a>
+  </div>
+</section>
+</main>
+
+<footer class="footer">
+  <div class="brand"><b>E</b><span>estoque<span>+</span></span></div>
+  <p>Gestão de estoque multiempresa — simples, segura e em tempo real.</p>
+  <div class="foot-links">
+    <a href="/">Abrir o aplicativo</a><span>·</span><a href="#funcionalidades">Funcionalidades</a><span>·</span><a href="#ajuda">Ajuda</a>
+  </div>
+</footer>
+
+<script src="site.js"></script>
+</body>
+</html>
