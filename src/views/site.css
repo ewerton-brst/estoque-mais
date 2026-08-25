@@ -110,6 +110,14 @@ img,svg{display:inline-block;vertical-align:middle}
 .stats strong{display:block;font:700 clamp(28px,3vw,40px) 'Space Grotesk',sans-serif;background:linear-gradient(90deg,#9db1ff,#c9b8ff);-webkit-background-clip:text;background-clip:text;color:transparent}
 .stats span{color:#93a3c4;font-size:12.5px}
 
+/* ---------- grid de contato ---------- */
+.contact-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;max-width:980px;margin:auto}
+.contact-card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:24px;text-align:center;transition:transform .25s,box-shadow .25s,border-color .25s}
+.contact-card:hover{transform:translateY(-6px);box-shadow:0 22px 46px #18223014;border-color:#c9d4ff}
+.contact-card h3{font:600 15px 'Space Grotesk',sans-serif;margin:14px 0 8px}
+.contact-card p{color:var(--muted);font-size:13.5px;line-height:1.6}
+.contact-card small{font-size:11.5px;color:#8fa0c0}
+
 /* ---------- ajuda ---------- */
 .help{background:linear-gradient(180deg,var(--canvas),#eef2fb)}
 .accordion{max-width:820px;margin:auto;display:flex;flex-direction:column;gap:12px}
@@ -149,6 +157,7 @@ details[open] summary::after{transform:rotate(45deg);color:var(--blue)}
   .cards{grid-template-columns:repeat(2,1fr)}
   .stats{grid-template-columns:repeat(2,1fr)}
   .chip-b{left:6px}
+  .contact-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:720px){
   .nav-toggle{display:block}
@@ -159,6 +168,7 @@ details[open] summary::after{transform:rotate(45deg);color:var(--blue)}
   .section{padding:72px 20px}
   .cards{grid-template-columns:1fr}
   .float-chip{display:none}
+  .contact-grid{grid-template-columns:1fr}
 }
 @media(max-width:480px){
   .stats{grid-template-columns:1fr 1fr;gap:12px}
