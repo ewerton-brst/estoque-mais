@@ -110,6 +110,8 @@ o total de alertas pendentes.
 
 Colunas exportadas: Produto, SKU, Categoria, Quantidade, Mínimo, Preço unitário.
 
+**Novo na v2.0+:** Auditoria estruturada em `src/data/audit.log` (JSON lines) pode ser analisada externamente para relatórios customizados ou integração com ferramentas de BI.
+
 ---
 
 ## 7. Empresas *(administradores)*
@@ -198,7 +200,8 @@ Peça a um administrador que edite seu usuário e defina uma nova senha; você s
 a trocá-la no próximo login.
 
 **Outra pessoa alterou o estoque e eu não vejo a mudança.**
-Aguarde alguns segundos: o sistema sincroniza automaticamente a cada 5 segundos.
+Na v2.0+, a atualização é **instantânea via WebSocket**. Se estiver usando a v1.x ou se a conexão
+WebSocket cair, o sistema faz polling automático a cada 5 segundos — aguarde alguns segundos.
 
 **Posso usar o sistema de outro computador?**
 Sim. O servidor exibe no console os endereços de rede local (ex.: `http://192.168.0.10:3000`);
@@ -211,3 +214,13 @@ e futuras permissões específicas.
 **Meu acesso foi bloqueado com "Muitas tentativas".**
 Após 5 senhas erradas seguidas, o login fica bloqueado por 10 minutos por segurança.
 Aguarde e tente novamente.
+
+**Apareceu um aviso de "Conflito de edição". O que faço?**
+Isso ocorre quando dois usuários editam o estoque simultaneamente (v2.0+ com optimistic locking).
+O sistema oferece duas opções:
+1. **Mesclar automaticamente**: suas alterações são aplicadas sobre a versão mais recente
+2. **Revisar manualmente**: você vê as diferenças e decide quais mudanças manter
+
+**O WebSocket desconectou. O sistema para de funcionar?**
+Não. Se a conexão WebSocket cair, o sistema automaticamente tenta reconectar (com backoff exponencial)
+e enquanto isso usa polling de 5 segundos como fallback. Você pode continuar trabalhando normalmente.

@@ -17,7 +17,37 @@ const when = (value) => { const date = new Date(value); if (!value || Number.isN
 const nextProductId = () => state.products.length ? Math.max(...state.products.map((item) => item.id)) + 1 : 1;
 const todayElement = $('#today-label'); if (todayElement) todayElement.textContent = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' }).format(new Date()).replace(/^./, (char) => char.toUpperCase());
 const status = (item) => item.quantity === 0 ? 'out' : item.quantity <= item.minimum ? 'low' : 'ok';
-const save = async () => { if (!loggedUser) return; inventoryRequestInFlight = true; try { await api('/api/inventory', { method: 'PUT', body: JSON.stringify({ products: state.products, movements: state.movements, productAudits: state.productAudits }) }); } catch (error) { toast(`Não foi possível sincronizar: ${error.message}`); throw error; } finally { inventoryRequestInFlight = false; } };
+const save = async () => { 
+    if (!loggedUser) return; 
+    inventoryRequestInFlight = true; 
+    try { 
+        // Primeiro, buscar o inventário atual com ETag
+        const currentInv = await api('/api/inventory');
+        const etag = currentInv.headers?.get?.('ETag') || null;
+        
+        // Se tiver ETag, usar optimistic locking
+        const headers = {};
+        if (etag) {
+            headers['If-Match'] = etag;
+        }
+        
+        await api('/api/inventory', { 
+            method: 'PUT', 
+            body: JSON.stringify({ products: state.products, movements: state.movements, productAudits: state.productAudits }),
+            headers
+        }); 
+    } catch (error) { 
+        if (error.message.includes('CONCURRENT_MODIFICATION')) {
+            toast('Os dados foram modificados por outro usuário. Atualizando...');
+            await loadInventory();
+        } else {
+            toast(`Não foi possível sincronizar: ${error.message}`);
+        }
+        throw error; 
+    } finally { 
+        inventoryRequestInFlight = false; 
+    } 
+};
 const auditProduct = async (action, product) => { state.productAudits.unshift({ action, product: product.name, sku: product.sku, actor: loggedUser?.name || 'Sistema', date: new Date().toISOString() }); await save(); if ($('#user-activity')) renderUsers(); };
 const categoryIcon = (category) => category === 'Cozinha' ? 'utensils' : category === 'Têxtil' ? 'shirt' : category === 'Organização' ? 'boxes' : 'home';
 let loggedUser = null;
@@ -25,7 +55,32 @@ let selectedCompany = null;
 let companies = [];
 const roleNames = { admin: 'Administrador', manager: 'Gerente', operator: 'Operador', viewer: 'Consulta' };
 const companyLabel = (item) => item.companyIds?.includes('*') ? 'Todas as empresas' : ((item.companyIds || []).map((id) => companies.find((entry) => entry.id === id)?.name || id).join(' · ') || 'Sem empresa');
-const api = (url, options = {}) => fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options }).then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Não foi possível concluir a operação.'); return data; });
+const api = async (url, options = {}) => {
+    const response = await fetch(url, { 
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }, 
+        ...options 
+    });
+    const data = await response.json();
+    
+    // Armazenar ETag do response para uso futuro
+    if (response.headers && response.headers.get) {
+        const etag = response.headers.get('ETag');
+        if (etag) {
+            data._etag = etag;
+        }
+    }
+    
+    // Adicionar método get para compatibilidade
+    data.headers = {
+        get: (name) => {
+            if (name.toLowerCase() === 'etag') return data._etag;
+            return null;
+        }
+    };
+    
+    if (!response.ok) throw new Error(data.error || 'Não foi possível concluir a operação.');
+    return data;
+};
 async function loadCompanies() { companies = await api('/api/companies'); $('#login-company').innerHTML = companies.map((company) => `<option value="${escapeHtml(company.id)}">${escapeHtml(company.name)}</option>`).join(''); if (companies.length) $('#login-company').value = companies[0].id; renderCompanyManager(); }
 function renderCompanyManager() { if (loggedUser?.role !== 'admin') return; let manager = $('#company-manager'); if (!manager) { manager = document.createElement('div'); manager.id = 'company-manager'; manager.className = 'company-manager'; } if (manager.parentElement !== $('#settings-page')) $('#settings-page').append(manager); manager.innerHTML = `<div class="panel-title"><div><h2>Empresas</h2><p>Crie empresas e mantenha estoques independentes.</p></div><button class="primary" id="new-company"><i data-lucide="building-2"></i>Adicionar empresa</button></div><div class="company-list">${companies.map((company) => `<div><div><strong>${escapeHtml(company.name)}</strong><small>Estoque independente · ${company.id === 'default' ? 'Empresa padrão' : 'Ativa'}</small></div>${company.id === 'default' ? '' : `<button class="danger" data-company-remove="${escapeHtml(company.id)}">Remover</button>`}</div>`).join('')}</div>`; $('#new-company').onclick = openCompanyForm; lucide.createIcons(); }
 function openCompanyForm() { const modal = document.createElement('dialog'); modal.innerHTML = '<form><div class="modal-title"><div><small>ADMINISTRAÇÃO</small><h2>Adicionar empresa</h2></div><button type="button" class="close">×</button></div><label>Nome da empresa<input name="name" required maxlength="120"></label><label>CNPJ<input name="cnpj" placeholder="00.000.000/0000-00" maxlength="32"></label><div class="form-grid"><label>Telefone<input name="phone" maxlength="32"></label><label>E-mail<input name="email" type="email" maxlength="120"></label></div><label>Endereço<input name="address" maxlength="200"></label><footer><button type="button" class="secondary">Cancelar</button><button class="primary">Criar empresa</button></footer></form>'; document.body.append(modal); const close = () => { modal.close(); modal.remove(); }; modal.querySelectorAll('.close,.secondary').forEach((button) => button.addEventListener('click', close)); modal.querySelector('form').addEventListener('submit', async (event) => { event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget)); try { const data = await api('/api/companies', { method: 'POST', body: JSON.stringify(values) }); companies.push(data.company); renderCompanyManager(); $('#login-company').innerHTML = companies.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join(''); close(); openFirstAccessInfo(data.company.name, data.manager); } catch (error) { toast(error.message); } }); modal.showModal(); }

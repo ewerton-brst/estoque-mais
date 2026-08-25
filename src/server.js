@@ -1,21 +1,89 @@
 import { createServer, STATUS_CODES } from 'node:http';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile, access } from 'node:fs/promises';
 import { extname, isAbsolute, join, normalize, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-import { randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
+import { randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual, createHash } from 'node:crypto';
 import { promisify } from 'node:util';
 import { networkInterfaces } from 'node:os';
+
 const scrypt = promisify(scryptCallback);
 const root = join(fileURLToPath(new URL('.', import.meta.url)), 'views');
 const dataDir = join(root, '..', 'data');
 const usersFile = join(dataDir, 'users.json');
-const inventoryFile = join(dataDir, 'inventory.json');
 const companiesFile = join(dataDir, 'companies.json');
+const sessionsFile = join(dataDir, 'sessions.json');
+const auditLogFile = join(dataDir, 'audit-log.json');
+const rateLimitFile = join(dataDir, 'rate-limit.json');
 const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8' };
 const roles = ['admin', 'manager', 'operator', 'viewer'];
-const sessionsFile = join(dataDir, 'sessions.json');
 const SESSION_TTL = 7 * 24 * 60 * 60 * 1000;
+const LOGIN_LIMIT = 5;
+const LOGIN_WINDOW = 10 * 60 * 1000;
+const BODY_LIMIT = 2 * 1024 * 1024;
+
+// Logging estruturado de auditoria
+const auditLog = async (event, user, action, details) => {
+    const entry = {
+        timestamp: new Date().toISOString(),
+        event,
+        userId: user?.id || 'system',
+        username: user?.username || 'system',
+        action,
+        details,
+        ip: details?.ip || ''
+    };
+    try {
+        let logs = [];
+        try { logs = JSON.parse(await readFile(auditLogFile, 'utf8')); } catch { logs = []; }
+        logs.push(entry);
+        // Manter apenas últimos 1000 registros
+        if (logs.length > 1000) logs = logs.slice(-1000);
+        await writeFile(auditLogFile, JSON.stringify(logs, null, 2));
+    } catch (error) {
+        console.error('[AUDIT] Falha ao registrar auditoria:', error.message);
+    }
+};
+
+// Rate limit persistente em disco
+let loginAttempts = new Map();
+const loadRateLimits = async () => {
+    try {
+        const stored = JSON.parse(await readFile(rateLimitFile, 'utf8'));
+        const now = Date.now();
+        // Filtrar apenas entries válidos
+        for (const [key, attempt] of Object.entries(stored)) {
+            if (attempt.blockedUntil > now || (now - (attempt.lastAt ?? 0) <= LOGIN_WINDOW)) {
+                loginAttempts.set(key, attempt);
+            }
+        }
+    } catch { /* Ignora se não existir */ }
+};
+await loadRateLimits();
+
+const persistRateLimits = () => {
+    const now = Date.now();
+    const toSave = {};
+    for (const [key, attempt] of [...loginAttempts]) {
+        if (attempt.blockedUntil > now || (now - (attempt.lastAt ?? 0) <= LOGIN_WINDOW)) {
+            toSave[key] = attempt;
+        }
+    }
+    writeFile(rateLimitFile, JSON.stringify(toSave, null, 2)).catch(() => {});
+};
+
+// Limpeza periódica com persistência
+setInterval(() => {
+    const now = Date.now();
+    let changed = false;
+    for (const [key, attempt] of [...loginAttempts]) {
+        if ((attempt.blockedUntil && attempt.blockedUntil < now) || (!attempt.blockedUntil && now - (attempt.lastAt ?? 0) > LOGIN_WINDOW)) {
+            loginAttempts.delete(key);
+            changed = true;
+        }
+    }
+    if (changed) persistRateLimits();
+}, 5 * 60 * 1000).unref();
+
 const loadSessions = async () => {
     try {
         const stored = JSON.parse(await readFile(sessionsFile, 'utf8'));
@@ -23,13 +91,26 @@ const loadSessions = async () => {
     } catch { return new Map(); }
 };
 const sessions = await loadSessions();
-const persistSessions = () => { const now = Date.now(); for (const [token, session] of [...sessions]) if (!session?.createdAt || now - session.createdAt > SESSION_TTL) sessions.delete(token); writeFile(sessionsFile, JSON.stringify([...sessions], null, 2)).catch(() => {}); };
-const loginAttempts = new Map();
-const LOGIN_LIMIT = 5;
-const LOGIN_WINDOW = 10 * 60 * 1000;
-const BODY_LIMIT = 2 * 1024 * 1024;
-const securityHeaders = (contentType) => ({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer', ...(String(contentType).startsWith('text/html') ? { 'Content-Security-Policy': "default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" } : {}) });
-setInterval(() => { const now = Date.now(); for (const [key, attempt] of [...loginAttempts]) if ((attempt.blockedUntil && attempt.blockedUntil < now) || (!attempt.blockedUntil && now - (attempt.lastAt ?? 0) > LOGIN_WINDOW)) loginAttempts.delete(key); }, 5 * 60 * 1000).unref();
+const persistSessions = () => { 
+    const now = Date.now(); 
+    for (const [token, session] of [...sessions]) {
+        if (!session?.createdAt || now - session.createdAt > SESSION_TTL) {
+            sessions.delete(token);
+        }
+    } 
+    writeFile(sessionsFile, JSON.stringify([...sessions], null, 2)).catch(() => {}); 
+};
+
+const securityHeaders = (contentType) => ({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+    'X-XSS-Protection': '1; mode=block',
+    ...(String(contentType).startsWith('text/html') ? {
+        'Content-Security-Policy': "default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    } : {})
+});
+
 let inventoryWriteQueue = Promise.resolve();
 
 async function hashPassword(password) {
@@ -135,23 +216,66 @@ async function handleApi(request, response, pathname) {
         const { username, password, companyId } = await body(request);
         const attemptKey = `${String(username ?? '').toLowerCase()}|${request.socket.remoteAddress}`;
         const attempt = loginAttempts.get(attemptKey);
-        if (attempt?.blockedUntil > Date.now()) return sendJson(response, 429, { error: 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.' });
+        if (attempt?.blockedUntil > Date.now()) {
+            await auditLog('login_blocked', { username }, 'LOGIN_BLOCKED', { 
+                ip: request.socket.remoteAddress,
+                reason: 'Rate limit exceeded'
+            });
+            return sendJson(response, 429, { error: 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.' });
+        }
         const user = users.find((item) => item.username === username && item.active);
         if (!user) await hashPassword('tempo-equalizado');
         if (!user || !(await verifyPassword(password, user.passwordHash))) {
             const failures = (attempt?.failures ?? 0) + 1;
             loginAttempts.set(attemptKey, { failures, blockedUntil: failures >= LOGIN_LIMIT ? Date.now() + LOGIN_WINDOW : 0, lastAt: Date.now() });
+            persistRateLimits();
+            await auditLog('login_failed', { username }, 'LOGIN_FAILED', { 
+                ip: request.socket.remoteAddress,
+                failures
+            });
             return sendJson(response, 401, { error: 'Usuário ou senha inválidos.' });
         }
         loginAttempts.delete(attemptKey);
-        if (user.username === 'admin' && companyId !== 'default') return sendJson(response, 403, { error: 'O usuário master admin só pode entrar na empresa BRSTEC.' });
+        persistRateLimits();
+        if (user.username === 'admin' && companyId !== 'default') {
+            await auditLog('login_denied', user, 'LOGIN_COMPANY_DENIED', { 
+                ip: request.socket.remoteAddress,
+                requestedCompany: companyId
+            });
+            return sendJson(response, 403, { error: 'O usuário master admin só pode entrar na empresa BRSTEC.' });
+        }
         const company = (await readCompanies()).find((item) => item.id === companyId && item.active);
-        if (!company || (user.role !== 'admin' && !user.companyIds.includes(companyId))) return sendJson(response, 403, { error: 'Usuário sem acesso a esta empresa.' });
-        const token = randomBytes(32).toString('hex'); sessions.set(token, { userId: user.id, companyId, createdAt: Date.now() }); persistSessions();
+        if (!company || (user.role !== 'admin' && !user.companyIds.includes(companyId))) {
+            await auditLog('login_denied', user, 'LOGIN_ACCESS_DENIED', { 
+                ip: request.socket.remoteAddress,
+                companyId
+            });
+            return sendJson(response, 403, { error: 'Usuário sem acesso a esta empresa.' });
+        }
+        const token = randomBytes(32).toString('hex'); 
+        sessions.set(token, { userId: user.id, companyId, createdAt: Date.now() }); 
+        persistSessions();
+        await auditLog('login_success', user, 'LOGIN_SUCCESS', { 
+            ip: request.socket.remoteAddress,
+            companyId,
+            companyName: company.name
+        });
         return sendJson(response, 200, { user: publicUser(user), company, mustChangePassword: user.mustChangePassword === true }, { 'Set-Cookie': `estoque_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_TTL / 1000}` });
     }
     if (request.method === 'POST' && pathname === '/api/logout') {
-        sessions.delete(cookies(request).estoque_session); persistSessions(); return sendJson(response, 200, { ok: true });
+        const sessionToken = cookies(request).estoque_session;
+        const session = sessions.get(sessionToken);
+        if (session) {
+            const usersList = await readUsers();
+            const loggingUser = usersList.find(u => u.id === session.userId);
+            await auditLog('logout', loggingUser, 'LOGOUT', { 
+                ip: request.socket.remoteAddress,
+                companyId: session.companyId
+            });
+        }
+        sessions.delete(sessionToken); 
+        persistSessions(); 
+        return sendJson(response, 200, { ok: true });
     }
     const user = currentUser(request, users);
     if (pathname === '/api/session' && request.method === 'GET') return user ? sendJson(response, 200, { user: publicUser(user), company: (await readCompanies()).find((company) => company.id === sessions.get(cookies(request).estoque_session)?.companyId), mustChangePassword: user.mustChangePassword === true }) : sendJson(response, 401, { error: 'Não autenticado.' });
@@ -163,13 +287,43 @@ async function handleApi(request, response, pathname) {
         user.passwordHash = await hashPassword(password); user.mustChangePassword = false;
         await writeFile(usersFile, JSON.stringify(users, null, 2)); return sendJson(response, 200, { user: publicUser(user) });
     }
-    if (pathname === '/api/inventory' && request.method === 'GET') return sendJson(response, 200, await readCompanyInventory(selectedCompany.id));
+    if (pathname === '/api/inventory' && request.method === 'GET') {
+        const inventory = await readCompanyInventory(selectedCompany.id);
+        // Gerar ETag baseado no hash do conteúdo para optimistic locking
+        const etag = createHash('md5').update(JSON.stringify(inventory)).digest('hex');
+        return sendJson(response, 200, inventory, { ETag: `"${etag}"` });
+    }
     if (pathname === '/api/inventory' && request.method === 'PUT') {
         if (!allowed(user, 'operator')) return sendJson(response, 403, { error: 'Seu usuário não pode alterar o estoque.' });
         const inventory = await body(request);
         const validProduct = (product) => Boolean(product) && typeof product.name === 'string' && product.name.trim().length > 0 && typeof product.sku === 'string' && Number.isFinite(product.quantity) && product.quantity >= 0 && Number.isFinite(product.minimum) && product.minimum >= 0 && Number.isFinite(product.price) && product.price >= 0;
         if (!Array.isArray(inventory.products) || !Array.isArray(inventory.movements) || !Array.isArray(inventory.productAudits) || !inventory.products.every(validProduct)) return sendJson(response, 400, { error: 'Dados de estoque inválidos.' });
+        
+        // Verificar If-Match header para optimistic locking
+        const ifMatch = request.headers['if-match'];
+        if (ifMatch) {
+            const currentInventory = await readCompanyInventory(selectedCompany.id);
+            const currentEtag = createHash('md5').update(JSON.stringify(currentInventory)).digest('hex');
+            // Remover aspas do If-Match header
+            const clientEtag = ifMatch.replace(/"/g, '');
+            if (clientEtag !== currentEtag) {
+                await auditLog('inventory_conflict', user, 'UPDATE_CONFLICT', { 
+                    companyId: selectedCompany.id,
+                    reason: 'ETag mismatch - dados foram modificados por outro usuário'
+                });
+                return sendJson(response, 412, { 
+                    error: 'Os dados foram modificados por outro usuário. Atualize e tente novamente.',
+                    code: 'CONCURRENT_MODIFICATION'
+                });
+            }
+        }
+        
         await writeInventory({ file: join(dataDir, `inventory-${selectedCompany.id}.json`), data: inventory });
+        await auditLog('inventory_update', user, 'INVENTORY_MODIFIED', { 
+            companyId: selectedCompany.id,
+            productsCount: inventory.products.length,
+            movementsCount: inventory.movements.length
+        });
         return sendJson(response, 200, inventory);
     }
     if (pathname === '/api/companies' && request.method === 'POST') {
@@ -177,11 +331,28 @@ async function handleApi(request, response, pathname) {
         const { name, cnpj, phone, email, address } = await body(request);
         if (!name?.trim()) return sendJson(response, 400, { error: 'Informe o nome da empresa.' });
         if ([name, cnpj, phone, email, address].some((field) => field && String(field).length > 200)) return sendJson(response, 400, { error: 'Um dos campos excede o tamanho máximo permitido.' });
-        const companies = await readCompanies(); if (companies.some((company) => company.name.toLowerCase() === name.trim().toLowerCase())) return sendJson(response, 409, { error: 'Empresa já cadastrada.' });
-        const company = { id: randomUUID(), name: name.trim(), cnpj: cnpj?.trim() || '', phone: phone?.trim() || '', email: email?.trim() || '', address: address?.trim() || '', active: true }; companies.push(company);
+        const companies = await readCompanies(); 
+        if (companies.some((company) => company.name.toLowerCase() === name.trim().toLowerCase())) {
+            await auditLog('company_create_failed', user, 'COMPANY_CREATE_DUPLICATE', { 
+                ip: request.socket.remoteAddress,
+                attemptedName: name.trim()
+            });
+            return sendJson(response, 409, { error: 'Empresa já cadastrada.' });
+        }
+        const company = { id: randomUUID(), name: name.trim(), cnpj: cnpj?.trim() || '', phone: phone?.trim() || '', email: email?.trim() || '', address: address?.trim() || '', active: true }; 
+        companies.push(company);
         const managerUsername = `gerente_${company.id.slice(0, 6)}`;
         const manager = { id: randomUUID(), name: 'Gerente', username: managerUsername, role: 'manager', active: true, exportReports: false, companyIds: [company.id], mustChangePassword: true, profileImage: '', passwordHash: await hashPassword('gerente') };
-        users.push(manager); await writeFile(companiesFile, JSON.stringify(companies, null, 2)); await writeFile(usersFile, JSON.stringify(users, null, 2)); return sendJson(response, 201, { company, manager: { name: manager.name, username: manager.username, temporaryPassword: 'gerente' } });
+        users.push(manager); 
+        await writeFile(companiesFile, JSON.stringify(companies, null, 2)); 
+        await writeFile(usersFile, JSON.stringify(users, null, 2));
+        await auditLog('company_created', user, 'COMPANY_CREATED', { 
+            ip: request.socket.remoteAddress,
+            companyId: company.id,
+            companyName: company.name,
+            managerUsername
+        });
+        return sendJson(response, 201, { company, manager: { name: manager.name, username: manager.username, temporaryPassword: 'gerente' } });
     }
     const companyInventoryMatch = pathname.match(/^\/api\/companies\/([^/]+)\/inventory$/);
     if (companyInventoryMatch && request.method === 'GET') {
@@ -193,7 +364,14 @@ async function handleApi(request, response, pathname) {
     if (companyMatch && request.method === 'DELETE') {
         if (!allowed(user, 'admin')) return sendJson(response, 403, { error: 'Somente o admin master pode remover empresas.' });
         const { password } = await body(request);
-        if (!password || !(await verifyPassword(password, user.passwordHash))) return sendJson(response, 401, { error: 'Senha de administrador incorreta.' });
+        if (!password || !(await verifyPassword(password, user.passwordHash))) {
+            await auditLog('company_delete_failed', user, 'COMPANY_DELETE_AUTH_FAILED', { 
+                ip: request.socket.remoteAddress,
+                companyId: companyMatch[1],
+                reason: 'Senha incorreta'
+            });
+            return sendJson(response, 401, { error: 'Senha de administrador incorreta.' });
+        }
         if (companyMatch[1] === 'default') return sendJson(response, 400, { error: 'A empresa matriz BRSTEC não pode ser removida.' });
         const companies = await readCompanies();
         const company = companies.find((item) => item.id === companyMatch[1]);

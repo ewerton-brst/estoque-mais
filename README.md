@@ -30,11 +30,13 @@ estoque-mais/
     │   ├── site.css          # Estilos animados do site
     │   ├── site.js           # Interações do site
     │   └── styles.css        # Estilos da interface
-    └── data/                 # Persistência em JSON (criada automaticamente)
-        ├── users.json        # Usuários e hashes de senha (scrypt)
-        ├── companies.json    # Empresas cadastradas
-        ├── inventory-*.json  # Estoque independente por empresa
+    └── data/                 # Persistência (criada automaticamente)
+        ├── estoque.db        # Banco de dados SQLite (produção)
+        ├── users.json        # Usuários e hashes de senha (scrypt) — legado
+        ├── companies.json    # Empresas cadastradas — legado
+        ├── inventory-*.json  # Estoque independente por empresa — legado
         └── sessions.json     # Sessões ativas (sobrevivem a reinícios)
+        └── audit.log         # Logs estruturados de auditoria (JSON lines)
 ```
 
 ## Funcionalidades
@@ -45,10 +47,12 @@ estoque-mais/
 - **Produtos**: cadastro, edição e exclusão com SKU, categoria, preço unitário e estoque mínimo.
 - **Movimentações**: entradas e saídas de mercadoria com validação de saldo disponível.
 - **Alertas**: itens abaixo do estoque mínimo ou zerados destacados automaticamente.
-- **Auditoria**: registra quem criou/editou/excluiu produtos e cada movimentação, com data real.
+- **Auditoria**: registra quem criou/editou/excluiu produtos e cada movimentação, com data real e logs estruturados em arquivo dedicado.
 - **Relatórios**: exportação em Excel (.xlsx) ou CSV, controlada por permissão específica.
 - **Usuários**: gestão de contas, papéis, ativação/desativação e foto de perfil — pelo admin master (todas as empresas) ou pelo gerente (apenas a sua empresa).
-- **Interface**: tema claro/escuro/automático, responsiva, com sincronização automática do estoque a cada 5 segundos.
+- **Interface**: tema claro/escuro/automático, responsiva, com **sincronização em tempo real via WebSockets** (fallback: polling a cada 5 segundos).
+- **Banco de dados**: suporte híbrido JSON (desenvolvimento) e **SQLite (produção)** com migração automática.
+- **Controle de concorrência**: **optimistic locking com ETag** para prevenir conflitos de edição simultânea.
 
 ## Requisitos
 
@@ -110,7 +114,7 @@ A suíte completa retorna código de saída diferente de zero quando algum teste
 | GET | `/api/session` | Sessão atual | Autenticado |
 | POST | `/api/account/password` | Altera a própria senha | Autenticado |
 | GET | `/api/inventory` | Estoque da empresa da sessão | Autenticado |
-| PUT | `/api/inventory` | Salva o estoque completo | Operator |
+| PUT | `/api/inventory` | Salva o estoque completo (com ETag para optimistic locking) | Operator |
 | POST | `/api/companies` | Cria empresa (+ gerente) | Admin |
 | GET | `/api/companies/:id/inventory` | Estoque de qualquer empresa (backup) | Admin |
 | DELETE | `/api/companies/:id` | Remove empresa e todos os seus dados | Admin (com senha) |
@@ -118,6 +122,7 @@ A suíte completa retorna código de saída diferente de zero quando algum teste
 | GET | `/api/users` | Lista usuários | Admin (todos) · Gerente (sua empresa) |
 | POST | `/api/users` | Cria usuário | Admin · Gerente (sua empresa) |
 | PATCH | `/api/users/:id` | Atualiza usuário | Admin · Gerente (sua empresa) · Próprio perfil |
+| WS | `/ws` | WebSocket para sincronização em tempo real | Autenticado |
 
 Tentativas de login são limitadas a 5 falhas consecutivas por usuário/IP dentro de 10 minutos.
 
