@@ -46,7 +46,7 @@ navToggle?.addEventListener('click', () => navLinks.classList.toggle('open'));
 navLinks?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => navLinks.classList.remove('open')));
 
 // Link ativo conforme a seção visível
-const sections = ['inicio', 'funcionalidades', 'ajuda'].map((id) => document.getElementById(id));
+const sections = ['inicio', 'servicos', 'estoque-mais', 'contato'].map((id) => document.getElementById(id));
 const navAnchors = [...navLinks.querySelectorAll('a[href^="#"]')];
 const sectionObserver = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
