@@ -23,5 +23,18 @@
       "companyId": "default"
     },
     "ip": "127.0.0.1"
+  },
+  {
+    "timestamp": "2026-08-25T01:40:16.316Z",
+    "event": "login_success",
+    "userId": "700d3117-f495-4ead-9fb1-a39d03e95d5b",
+    "username": "admin",
+    "action": "LOGIN_SUCCESS",
+    "details": {
+      "ip": "127.0.0.1",
+      "companyId": "default",
+      "companyName": "BRSTEC"
+    },
+    "ip": "127.0.0.1"
   }
 ]
