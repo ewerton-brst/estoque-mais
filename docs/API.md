@@ -6,6 +6,8 @@ Requisições e respostas usam **JSON** (`Content-Type: application/json; charse
 Autenticação é feita por **cookie de sessão** (`estoque_session`), emitido no login com os atributos
 `HttpOnly; SameSite=Strict; Path=/; Max-Age=604800` (7 dias). Não há tokens Bearer.
 
+**Novo na v2.0:** WebSocket em `/ws` para sincronização em tempo real e cabeçalhos `ETag`/`If-Match` para optimistic locking.
+
 ---
 
 ## Sumário
@@ -17,8 +19,8 @@ Autenticação é feita por **cookie de sessão** (`estoque_session`), emitido n
 | POST | `/api/logout` | Encerra a sessão atual | Autenticado |
 | GET | `/api/session` | Dados da sessão atual | Autenticado |
 | POST | `/api/account/password` | Altera a própria senha | Autenticado |
-| GET | `/api/inventory` | Estoque da empresa da sessão | Autenticado |
-| PUT | `/api/inventory` | Salva o estoque completo | Operator ou superior |
+| GET | `/api/inventory` | Estoque da empresa da sessão (retorna `ETag`) | Autenticado |
+| PUT | `/api/inventory` | Salva o estoque completo (exige `If-Match`) | Operator ou superior |
 | POST | `/api/companies` | Cria nova empresa (+ gerente) | Admin |
 | GET | `/api/companies/:id/inventory` | Estoque de qualquer empresa (backup) | Admin |
 | DELETE | `/api/companies/:id` | Remove empresa e todos os seus dados | Admin (com senha) |
@@ -26,6 +28,7 @@ Autenticação é feita por **cookie de sessão** (`estoque_session`), emitido n
 | GET | `/api/users` | Lista todos os usuários | Admin |
 | POST | `/api/users` | Cria usuário | Admin |
 | PATCH | `/api/users/:id` | Atualiza usuário | Admin (ou o próprio perfil) |
+| WS | `/ws` | WebSocket para atualizações em tempo real | Autenticado |
 
 ---
 
@@ -134,6 +137,10 @@ Altera a senha do próprio usuário e limpa a flag `mustChangePassword`.
 
 Retorna o estoque completo da **empresa vinculada à sessão** (cada empresa possui arquivo próprio).
 
+**Cabeçalhos de resposta:**
+- `ETag: "<hash-sha256>"` — versão do estoque para optimistic locking
+- `Last-Modified: <RFC 7231 date>` — data da última modificação
+
 **Resposta `200`:**
 ```json
 {
@@ -159,11 +166,18 @@ Valores possíveis:
 - `productAudits[].action`: `"created"`, `"updated"` ou `"deleted"`
 - `date`: timestamp ISO 8601 (registros antigos podem conter texto legado)
 
+**Nota sobre cache condicional (v2.0+):**
+O cliente pode enviar `If-None-Match: "<etag>"` em requisições subseqüentes. Se o ETag não mudou,
+o servidor retorna `304 Not Modified` sem corpo, economizando banda.
+
 ### `PUT /api/inventory` *(operator ou superior)*
 
 Salva o estoque inteiro da empresa (o frontend envia o estado completo após cada operação,
 com rollback otimista em caso de falha). Gravações são serializadas por uma fila interna
 para evitar condições de corrida.
+
+**Cabeçalhos de requisição obrigatórios (v2.0+):**
+- `If-Match: "<etag>"` — deve corresponder ao ETag recebido no último `GET`; caso contrário, retorna `412 Precondition Failed`
 
 **Corpo:** mesmo formato da resposta de `GET /api/inventory`.
 
@@ -172,7 +186,12 @@ para evitar condições de corrida.
 - Cada produto exige: `name` (string não vazia), `sku` (string), `quantity`, `minimum` e `price`
   numéricos finitos e ≥ 0
 
-**Resposta `200`:** ecoa o estoque salvo.
+**Resposta `200`:** ecoa o estoque salvo com novo `ETag` no cabeçalho.
+
+**Erros:**
+- `412 Precondition Failed` — ETag divergente (conflito de edição); o corpo retorna o estoque atualizado para merge
+- `400` — validação de dados
+- `403` — usuário sem permissão operator ou superior
 
 ---
 
@@ -274,6 +293,61 @@ caso contrário `403`. A exportação em si acontece no navegador (SheetJS/CSV).
 
 **Erros:** `400` campos ausentes/papel inválido/empresa inexistente/senha < 6 caracteres ·
 `403` sem permissão ou gerente tentando criar admin · `409` username duplicado.
+
+---
+
+## WebSocket — Tempo Real *(v2.0+)*
+
+### `WS /ws`
+
+Conexão WebSocket para receber atualizações em tempo real do estoque. A conexão exige autenticação
+via cookie de sessão (mesmo cookie HTTP das requisições REST).
+
+**Handshake:**
+```javascript
+const ws = new WebSocket('ws://localhost:3000/ws');
+ws.onopen = () => console.log('Conectado');
+```
+
+**Mensagens do servidor → cliente (JSON):**
+
+| Tipo | Payload | Descrição |
+|------|---------|-----------|
+| `inventory:update` | `{ type: 'inventory:update', userId: 'uuid', timestamp: 'ISO8601' }` | Outro usuário modificou o estoque; cliente deve recarregar via `GET /api/inventory` |
+| `user:logout` | `{ type: 'user:logout', userId: 'uuid', reason: 'desativated|deleted' }` | Conta desativada/excluída; cliente deve encerrar sessão |
+| `ping` | `{ type: 'ping', timestamp: number }` | Keep-alive; cliente responde com `pong` |
+
+**Mensagens do cliente → servidor:**
+```json
+{ "type": "pong", "timestamp": 1756000000000 }
+```
+
+**Reconexão:**
+O cliente implementa backoff exponencial (1s, 2s, 4s, 8s, máx. 30s) em caso de desconexão.
+Após reconectar, deve fazer `GET /api/inventory` para sincronizar estado.
+
+**Fallback (v1.x ou WebSocket indisponível):**
+Polling a cada 5 segundos via `GET /api/inventory` com `If-None-Match` para economizar banda.
+
+---
+
+## Auditoria Estruturada *(v2.0+)*
+
+Além dos logs embutidos no JSON de auditoria por empresa, todas as ações são registradas em
+`src/data/audit.log` no formato **JSON lines** (uma linha = um evento JSON), facilitando análise
+externa com ferramentas como `jq`, ELK Stack ou Datadog.
+
+**Formato:**
+```json
+{"timestamp":"2026-08-24T14:30:00.000Z","action":"inventory.update","userId":"uuid","companyId":"default","ip":"192.168.0.10","changes":{"productsAdded":1,"movementsCount":2}}
+{"timestamp":"2026-08-24T14:31:00.000Z","action":"user.login","username":"admin","companyId":"default","ip":"192.168.0.10","success":true}
+```
+
+**Eventos registrados:**
+- `user.login`, `user.logout`, `user.create`, `user.update`, `user.delete`
+- `company.create`, `company.delete`
+- `inventory.update`, `product.create`, `product.update`, `product.delete`
+- `movement.in`, `movement.out`
 
 ### `PATCH /api/users/:id`
 

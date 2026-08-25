@@ -9,5 +9,10 @@
     "test": "node smoke-test.mjs && node tests/api.test.mjs"
   },
   "author": "Seu Nome",
-  "license": "ISC"
+  "license": "ISC",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "keywords": []
 }
