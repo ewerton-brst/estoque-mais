@@ -158,5 +158,13 @@
       "companyId": "default",
       "createdAt": 1787585477955
     }
+  ],
+  [
+    "0334b0ad684bf8316a518371f594716870f606b338b72aa83096617cfa065bf8",
+    {
+      "userId": "700d3117-f495-4ead-9fb1-a39d03e95d5b",
+      "companyId": "default",
+      "createdAt": 1787620250416
+    }
   ]
 ]
