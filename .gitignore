@@ -1,28 +1,98 @@
 ```
-# Compiled and build artifacts
-*.pyc
-__pycache__/
-*.o
-*.obj
-dist/
-build/
-
 # Dependencies
-.venv/
-venv/
 node_modules/
-
-# Logs and temp files
-*.log
-*.tmp
-*.swp
 
 # Environment
 .env
 .env.local
 .env.*
 
-# Editors
+# Logs
+*.log
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+target/
+*.tmp
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git/modules/
+*.sublime-workspace
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# Node.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+node_modules/
+dist/
+logs
+*.log
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.nyc_output
+coverage
+.nyc_output/
+coverage/
+*.lcov
+*.info
+*.raw
+*.json
+*.xml
+*.html
+*.css
+*.js
+*.map
+*.lock
+package-lock.json
+yarn.lock
+.pnp.*
+.pnp.js
+.yarn-integrity
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.idea/
+*.swp
+*.swo
+*~
 ```
